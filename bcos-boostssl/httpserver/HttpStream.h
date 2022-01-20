@@ -118,12 +118,20 @@ public:
 
     virtual ws::WsStream::Ptr wsStream() override
     {
-        auto wsStream = std::make_shared<ws::WsStreamImpl>(
+        auto ws_stream =
             std::make_shared<boost::beast::websocket::stream<boost::beast::tcp_stream>>(
-                std::move(*m_stream)));
+                std::move(*m_stream));
+        boost::beast::websocket::permessage_deflate opt;
+        opt.client_enable = true;  // for clients
+        opt.server_enable = true;  // for servers
+        ws_stream->set_option(opt);
+        // ws_stream->auto_fragment(false);
+        ws_stream->write_buffer_bytes(1024 * 1024);
+        auto wsStream = std::make_shared<ws::WsStreamImpl>(ws_stream);
         m_closed.store(true);
         return wsStream;
     }
+
 
     virtual bool open() override
     {
@@ -164,7 +172,7 @@ public:
 
 private:
     std::shared_ptr<boost::beast::tcp_stream> m_stream;
-};
+};  // namespace http
 
 
 // The http stream
@@ -194,8 +202,14 @@ public:
         auto stream = std::make_shared<
             boost::beast::websocket::stream<boost::beast::ssl_stream<boost::beast::tcp_stream>>>(
             std::move(*m_stream));
-        m_closed.store(true);
+        boost::beast::websocket::permessage_deflate opt;
+        opt.client_enable = true;  // for clients
+        opt.server_enable = true;  // for servers
+        stream->set_option(opt);
+        // stream->auto_fragment(false);
+        stream->write_buffer_bytes(1024 * 1024);
         auto wsStream = std::make_shared<ws::WsStreamSslImpl>(stream);
+        m_closed.store(true);
         return wsStream;
     }
 
